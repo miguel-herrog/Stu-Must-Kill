@@ -2,7 +2,10 @@ package com.miguel.stumustkill;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.Texture; // Importamos la Textura
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion; // Importamos la Region
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.Gdx;
@@ -22,14 +25,33 @@ public class StuGame extends ApplicationAdapter {
     int grabOffsetX = 0;
     int grabOffsetY = 0;
 
+    // --- NUEVAS VARIABLES: CARGAR IMÁGENES ---
+    Texture medkitTex;
+    Texture armorTex;
+    Texture pistolTex;
+
     @Override
     public void create() {
         batch = new SpriteBatch();
         shapeRenderer = new ShapeRenderer();
 
+        // 1. Cargamos las imágenes reales
+        medkitTex = new Texture(Gdx.files.internal("medkit.png"));
+        armorTex = new Texture(Gdx.files.internal("armor.png"));
+        pistolTex = new Texture(Gdx.files.internal("pistol.png"));
+
         grid = new InventoryGrid(5, 4);
-        grid.addItem(ItemFactory.createMedkit(), 0, 0);
-        grid.addItem(ItemFactory.createBodyArmor(), 2, 1);
+
+        // 2. Creamos los objetos manualmente, dándoles la imagen
+        // Botiquín 1x1
+        boolean[][] medkitShape = {{true}};
+        InventoryItem medkit = new InventoryItem("Medkit", medkitShape, new TextureRegion(medkitTex));
+        grid.addItem(medkit, 0, 0);
+
+        // Armadura 2x2
+        boolean[][] armorShape = {{true, true}, {true, true}};
+        InventoryItem armor = new InventoryItem("Armor", armorShape, new TextureRegion(armorTex));
+        grid.addItem(armor, 2, 1);
     }
 
     @Override
@@ -111,20 +133,7 @@ public class StuGame extends ApplicationAdapter {
         ScreenUtils.clear(0.2f, 0.2f, 0.2f, 1);
         int cellSize = 50;
 
-        // Pasada de relleno (Objetos anclados)
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        for (int x = 0; x < grid.getColumns(); x++) {
-            for (int y = 0; y < grid.getRows(); y++) {
-                InventoryItem item = grid.getItemAt(x, y);
-                if (item != null) {
-                    shapeRenderer.setColor(Color.ORANGE);
-                    shapeRenderer.rect(x * cellSize, y * cellSize, cellSize, cellSize);
-                }
-            }
-        }
-        shapeRenderer.end();
-
-        // Pasada de líneas (Cuadrícula)
+        // 1. Pasada de líneas (Cuadrícula de fondo)
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
         shapeRenderer.setColor(Color.WHITE);
         for (int x = 0; x < grid.getColumns(); x++) {
@@ -134,39 +143,60 @@ public class StuGame extends ApplicationAdapter {
         }
         shapeRenderer.end();
 
-        // --- NUEVO PASO: EL EFECTO FANTASMA (DIBUJAR AL AGARRAR) ---
+        // 2. Pasada de IMÁGENES (Texturas)
+        batch.begin(); // ¡Despertamos al SpriteBatch!
+
+        // Creamos una pequeña memoria para no dibujar el mismo arma gigante varias veces
+        java.util.ArrayList<InventoryItem> drawnItems = new java.util.ArrayList<>();
+
+        for (int x = 0; x < grid.getColumns(); x++) {
+            for (int y = 0; y < grid.getRows(); y++) {
+
+                InventoryItem item = grid.getItemAt(x, y);
+
+                // Si hay un objeto Y no lo hemos dibujado todavía...
+                if (item != null && !drawnItems.contains(item)) {
+
+                    // Calculamos el tamaño real en píxeles (ej: Armadura = 2 de ancho * 50 = 100px)
+                    float drawWidth = item.getWidth() * cellSize;
+                    float drawHeight = item.getHeight() * cellSize;
+
+                    // Dibujamos la imagen exacta del objeto
+                    batch.draw(item.getTextureRegion(), x * cellSize, y * cellSize, drawWidth, drawHeight);
+
+                    // Lo apuntamos en la lista de "ya dibujados"
+                    drawnItems.add(item);
+                }
+            }
+        }
+        batch.end();
+
+        // --- NUEVO PASO: EL EFECTO FANTASMA (IMAGEN TRANSPARENTE CON SNAP) ---
+        // Si tenemos un objeto en la mano...
         if (draggedItem != null) {
 
-            // Activamos transparencia para el fantasma
-            Gdx.gl.glEnable(Gdx.gl.GL_BLEND);
-            Gdx.gl.glBlendFunc(Gdx.gl.GL_SRC_ALPHA, Gdx.gl.GL_ONE_MINUS_SRC_ALPHA);
-
-            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-
-            // Color fantasma: Naranja con 50% de transparencia
-            shapeRenderer.setColor(1, 0.65f, 0, 0.5f);
-
-            boolean[][] shape = draggedItem.getShape();
-
-            // Calculamos en qué casilla exacta anclaría el objeto si lo soltáramos ahora mismo
+            // 1. Calculamos en qué casilla exacta anclaría visualmente (Snap to Grid)
             int targetX = gridX - grabOffsetX;
             int targetY = gridY - grabOffsetY;
 
-            for (int x = 0; x < draggedItem.getWidth(); x++) {
-                for (int y = 0; y < draggedItem.getHeight(); y++) {
-                    if (shape[x][y] == true) {
+            // 2. Despierta al SpriteBatch (Usamos el batch, ya no el shapeRenderer)
+            batch.begin();
 
-                        // ¡LA MAGIA DEL SNAP!
-                        // El fantasma salta de casilla en casilla, perfectamente alineado.
-                        float ghostX = (targetX + x) * cellSize;
-                        float ghostY = (targetY + y) * cellSize;
+            // 3. APLICAMOS TRANSPARENCIA AL BATCH (Aquí está la magia)
+            // Color blanco puro con 50% de Alpha hace que la textura parezca "fantasma".
+            batch.setColor(1, 1, 1, 0.5f);
 
-                        shapeRenderer.rect(ghostX, ghostY, cellSize, cellSize);
-                    }
-                }
-            }
-            shapeRenderer.end();
-            Gdx.gl.glDisable(Gdx.gl.GL_BLEND);
+            // 4. DIBUJAMOS LA IMAGEN ENTERA (No bloque a bloque)
+            float drawWidth = draggedItem.getWidth() * cellSize;
+            float drawHeight = draggedItem.getHeight() * cellSize;
+
+            // Dibujamos la textura región del objeto anclada visualmente
+            batch.draw(draggedItem.getTextureRegion(), targetX * cellSize, targetY * cellSize, drawWidth, drawHeight);
+
+            // 5. RESETEAMOS EL COLOR DEL BATCH (¡Crucial para no pintar todo transparente el próximo frame!)
+            batch.setColor(Color.WHITE);
+
+            batch.end();
         }
     }
 
