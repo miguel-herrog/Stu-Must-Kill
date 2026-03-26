@@ -55,6 +55,21 @@ public class StuGame extends ApplicationAdapter {
                 System.out.println("Error: La pistola no cabe ahí o choca con algo.");
             }
         }
+
+        // Si el jugador hace CLIC DERECHO...
+        if (Gdx.input.isButtonJustPressed(Input.Buttons.RIGHT)) {
+            int mouseX = Gdx.input.getX();
+            int mouseY = Gdx.input.getY();
+
+            // Hacemos la misma traducción de píxeles a casillas
+            int invertedY = Gdx.graphics.getHeight() - mouseY;
+            int gridX = mouseX / 50;
+            int gridY = invertedY / 50;
+
+            // Ordenamos al maletín que borre lo que haya en esa coordenada
+            grid.removeItemAt(gridX, gridY);
+            System.out.println("¡Limpieza! Borrando casilla en Columna: " + gridX + " | Fila: " + gridY);
+        }
         ScreenUtils.clear(0.2f, 0.2f, 0.2f, 1);
         int cellSize = 50;
 

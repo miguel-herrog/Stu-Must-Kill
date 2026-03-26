@@ -59,4 +59,26 @@ public class InventoryGrid {
     public InventoryItem getItemAt(int x, int y) {
         return cells[x][y];
     }
+
+    public void removeItemAt(int x, int y) {
+        // 1. Capturamos el objeto que hay en la casilla tocada
+        InventoryItem itemToRemove = cells[x][y];
+
+        // 2. Si la casilla ya estaba vacía (null), no hay nada que borrar. Salimos.
+        if (itemToRemove == null) {
+            return;
+        }
+
+        // 3. Si hay un arma, recorremos TODO el maletín buscando sus partes
+        for (int i = 0; i < columns; i++) {
+            for (int j = 0; j < rows; j++) {
+
+                // Si la casilla actual guarda exactamente la misma arma que queremos borrar...
+                if (cells[i][j] == itemToRemove) {
+                    cells[i][j] = null; // ...la vaciamos dejándola en null
+                }
+
+            }
+        }
+    }
 }
