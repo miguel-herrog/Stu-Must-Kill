@@ -47,6 +47,12 @@ public class StuGame extends ApplicationAdapter {
             // 3. ¡LA PRUEBA DE FUEGO!
             // Intentamos meter una pistola nueva exactamente en la casilla donde has hecho clic.
             InventoryItem newPistol = ItemFactory.createPistol();
+
+            if (Gdx.input.isKeyPressed(Input.Keys.R)) {
+                newPistol.rotate(); // ¡Giramos el arma antes de intentar meterla!
+                System.out.println("¡Rotando arma 90 grados!");
+            }
+
             boolean success = grid.addItem(newPistol, gridX, gridY);
 
             if (success) {
