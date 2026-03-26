@@ -11,6 +11,7 @@ public class ItemFactory {
     public static InventoryItem createPistol() {
         boolean[][] shape = new boolean[2][1];
         shape[0][0] = true;
+        shape[1][0] = true;
         return new InventoryItem("Pistol", shape);
     }
 
